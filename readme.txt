@@ -10,7 +10,7 @@ that can't normally be edited, such as object depth (Z coordinates).
 
 [ INSTALLATION INSTRUCTIONS ]
 
-1. Place the contents of the "Poly Bridge 2_Data" folder inside your Poly Bridge 2 install location.
+1. Place the contents of the "Poly Bridge 2" folder inside your Poly Bridge 2 install location.
    This will merge folders together but it won't replace any existing game files.
    By default, the game is installed in "C:\Program Files (x86)\Steam\steamapps\common\Poly Bridge 2".
 
