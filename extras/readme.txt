@@ -30,7 +30,7 @@ that can't normally be edited, such as object depth (Z coordinates).
 When you run PolyConverter.bat, all .layout files in the current folder will be converted into .json files.
 Then you can edit them as much as you like.
 
-When you run the program again, all the changes you made in the .json files will be applied to the .layout files.
+By pressing Enter to run the program again, all the changes you made in the .json files will be applied to the .layout files.
 A backup of the original .layout file (before any changes) will be created the first time.
-You can run the program again every time you want to apply any new changes.
+You can keep applying your changes as many times as you want without closing the window.
     

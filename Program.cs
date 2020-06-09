@@ -19,7 +19,7 @@ namespace PolyConverter
 
         const string layoutExtension = ".layout";
         const string jsonExtension = ".layout.json";
-        const string backupExtension = "_ORIGINAL.layout";
+        const string backupExtension = ".layout.backup";
 
         static readonly List<char> logChars = new List<char> { 'F', 'E', '+', '@', '*', '.', '>' };
 
@@ -32,7 +32,7 @@ namespace PolyConverter
             while (true)
             {
                 var resultLog = new List<string>();
-                int count = 0, backups = 0;
+                int fileCount = 0, backups = 0;
 
                 string[] files = null;
                 try { files = Directory.GetFiles("."); }
@@ -56,25 +56,15 @@ namespace PolyConverter
                     {
                         string layoutPath = jsonExtensionRegex.Replace(path, layoutExtension);
                         string backupPath = jsonExtensionRegex.Replace(path, backupExtension);
-                        if (File.Exists(layoutPath) && !File.Exists(backupPath))
-                        {
-                            try { File.Copy(layoutPath, backupPath); }
-                            catch (IOException e)
-                            {
-                                resultLog.Add($"[Error] Failed to create backup file \"{PathTrim(backupPath)}\": {e.Message}. Aborting conversion.");
-                                continue;
-                            }
-                            resultLog.Add($"[@] Made backup \"{PathTrim(backupPath)}\"");
-                        }
 
-                        try { resultLog.Add(JsonToLayout(path, layoutPath)); }
+                        try { resultLog.Add(JsonToLayout(path, layoutPath, backupPath)); }
                         catch (Exception e)
                         {
                             resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
                             continue;
                         }
 
-                        count++;
+                        fileCount++;
                     }
                     else if (layoutExtensionRegex.IsMatch(path))
                     {
@@ -87,22 +77,22 @@ namespace PolyConverter
                             resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
                             continue;
                         }
-                        count++;
+                        fileCount++;
                     }
                 }
 
-                // Order the log messages
-                for (int i = 0; i < resultLog.Count; i++)
-                    if (!logChars.Contains(resultLog[i][1]))
-                        resultLog[i] = $"[{logChars.Last()}] {resultLog[i]}"; // failsafe for my dumb log system
-                resultLog = resultLog.OrderBy(x => logChars.IndexOf(x[1])).ToList();
+                resultLog = resultLog
+                    .Where(s => !string.IsNullOrWhiteSpace(s) && logChars.Contains(s[1]))
+                    .OrderBy(s => logChars.IndexOf(s[1]))
+                    .ToList();
 
                 foreach (string msg in resultLog)
                     Console.WriteLine(msg);
 
-                if (count == 0)
+                if (resultLog.Count == 0)
                 {
-                    if (backups == 0) Console.WriteLine("[>] There are no layout files to convert in this folder.");
+                    if (fileCount > 0) Console.WriteLine("[>] All files checked, no changes to apply.");
+                    else if (backups == 0) Console.WriteLine("[>] There are no layout files to convert in this folder.");
                     else Console.WriteLine("[>] The only layouts detected are backups and were ignored.");
                 }
                 else Console.WriteLine($"[>] Done.");
@@ -132,7 +122,7 @@ namespace PolyConverter
             return $"[+] Created \"{PathTrim(jsonPath)}\"";
         }
 
-        static string JsonToLayout(string jsonPath, string layoutPath)
+        static string JsonToLayout(string jsonPath, string layoutPath, string backupPath)
         {
             string json = File.ReadAllText(jsonPath);
             SandboxLayoutData data = null;
@@ -145,22 +135,39 @@ namespace PolyConverter
 
             var bytes = data.SerializeBinaryCustom();
 
-            bool existed = File.Exists(layoutPath);
-            if (existed)
+            bool madeBackup = false;
+            bool existsBefore = File.Exists(layoutPath);
+
+            if (existsBefore)
             {
                 var oldBytes = File.ReadAllBytes(layoutPath);
                 if (oldBytes.SequenceEqual(bytes))
                 {
-                    return $"[.] No changes detected in \"{PathTrim(jsonPath)}\"";
+                    return $"";
+                }
+
+                if (!File.Exists(backupPath))
+                {
+                    try { File.Copy(layoutPath, backupPath); }
+                    catch (IOException e)
+                    {
+                        return $"[Error] Failed to create backup file \"{PathTrim(backupPath)}\": {e.Message}. Conversion aborted.";
+                    }
+                    madeBackup = true;
                 }
             }
+
             try { File.WriteAllBytes(layoutPath, bytes); }
             catch (IOException e)
             {
                 return $"[Error] Failed to save file \"{PathTrim(layoutPath)}\": {e.Message}";
             }
 
-            if (existed) return $"[*] Applied changes to \"{PathTrim(layoutPath)}\"";
+            if (existsBefore)
+            {
+                if (madeBackup) return $"[@] Made backup \"{PathTrim(backupPath)}\"\n[*] Applied changes to \"{PathTrim(layoutPath)}\"";
+                return $"[*] Applied changes to \"{PathTrim(layoutPath)}\"";
+            }
             else return $"[*] Converted json file into \"{PathTrim(layoutPath)}\"";
         }
 
