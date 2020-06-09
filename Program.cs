@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 
@@ -29,6 +27,7 @@ namespace PolyConverter
         {
             int count = 0;
             string[] files = Directory.GetFiles(".");
+            
             foreach (string path in files)
             {
                 if (backupExtensionRegex.IsMatch(path))
@@ -43,14 +42,13 @@ namespace PolyConverter
                     }
                     JsonToLayout(path, layoutPath);
                     count++;
-                    Console.WriteLine($"Converted json file back into \"{PathTrim(layoutPath)}\"");
                 }
                 else if (layoutExtensionRegex.IsMatch(path))
                 {
                     string newPath = layoutExtensionRegex.Replace(path, jsonExtension);
+                    if (File.Exists(newPath)) continue;
                     LayoutToJson(path, newPath);
                     count++;
-                    Console.WriteLine($"Created \"{PathTrim(newPath)}\"");
                 }
             }
 
@@ -70,15 +68,16 @@ namespace PolyConverter
             json = Regex.Replace(json, "(\r\n|\r|\n)( ){4,}(\\}|\\])", " $3");
 
             File.WriteAllText(newPath, json);
+            Console.WriteLine($"Created \"{PathTrim(newPath)}\"");
         }
 
         static void JsonToLayout(string oldPath, string newPath)
         {
             string json = File.ReadAllText(oldPath);
             var data = JsonConvert.DeserializeObject<SandboxLayoutData>(json, jsonSerializerSettings);
-            data.m_Vehicles.Clear();
-            var bytes = data.SerializeBinary();
+            var bytes = data.SerializeBinaryCustom();
             File.WriteAllBytes(newPath, bytes);
+            Console.WriteLine($"Converted json file back into \"{PathTrim(newPath)}\"");
         }
 
         static string PathTrim(string path)
