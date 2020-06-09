@@ -35,31 +35,22 @@ namespace PolyConverter
                     continue;
                 else if (jsonExtensionRegex.IsMatch(path))
                 {
-                    string newPath = jsonExtensionRegex.Replace(path, layoutExtension);
-                    JsonToLayout(path, newPath);
-
+                    string layoutPath = jsonExtensionRegex.Replace(path, layoutExtension);
+                    string backupPath = jsonExtensionRegex.Replace(path, backupExtension);
+                    if (File.Exists(layoutPath) && !File.Exists(backupPath)) {
+                        File.Copy(layoutPath, backupPath);
+                        Console.WriteLine($"Made backup \"{PathTrim(backupPath)}\"");
+                    }
+                    JsonToLayout(path, layoutPath);
                     count++;
-                    Console.WriteLine($"Converted json file back into \"{PathTrim(newPath)}\"");
+                    Console.WriteLine($"Converted json file back into \"{PathTrim(layoutPath)}\"");
                 }
                 else if (layoutExtensionRegex.IsMatch(path))
                 {
                     string newPath = layoutExtensionRegex.Replace(path, jsonExtension);
-                    string backupPath = layoutExtensionRegex.Replace(path, backupExtension);
-                    bool backup = false;
-
-                    if (files.Contains(newPath))
-                        continue;
-                    if (!files.Contains(backupPath))
-                    {
-                        File.Copy(path, backupPath);
-                        backup = true;
-                    }
-
                     LayoutToJson(path, newPath);
-
                     count++;
-                    Console.WriteLine($"Created \"{PathTrim(newPath)}\""
-                        + (backup ? $" and created backup \"{PathTrim(backupPath)}\"" : ""));
+                    Console.WriteLine($"Created \"{PathTrim(newPath)}\"");
                 }
             }
 
