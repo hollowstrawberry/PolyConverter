@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.0</TargetFramework>
     <Platforms>AnyCPU</Platforms>
+    <ApplicationIcon>pb_sheep.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
