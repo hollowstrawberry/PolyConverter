@@ -17,7 +17,7 @@ namespace PolyConverter
         public override bool CanConvert(Type objectType) => Types.Contains(objectType);
 
         public static readonly IReadOnlyList<Type> Types = new Type[] {
-            typeof(Vector2), typeof(Vector3), typeof(Quaternion),
+            typeof(Vector2), typeof(Vector3), typeof(Quaternion), typeof(Color)
         };
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)

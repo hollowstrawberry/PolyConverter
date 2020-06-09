@@ -13,11 +13,14 @@ namespace PolyConverter
     {
         public override bool CanRead => true;
         public override bool CanWrite => false;
-        public override bool CanConvert(Type objectType) => Types.Contains(objectType);
 
-        public static readonly IReadOnlyList<Type> Types = new Type[] {
-            typeof(BridgeJointProxy)
-        };
+        public override bool CanConvert(Type objectType)
+        {
+            if (!objectType.Name.EndsWith("Proxy")) return false;
+            var constructors = objectType.GetConstructors();
+            bool valid = constructors.Length == 2 && constructors.All(c => c.GetParameters().Length > 0);
+            return valid;
+        }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
@@ -27,20 +30,7 @@ namespace PolyConverter
             {
                 var field = objectType.GetField(property.Name);
                 if (field == null) continue;
-
-                if (VectorJsonConverter.Types.Contains(field.FieldType)) // Special case for vectors
-                {
-                    object v = field.FieldType.CreateObjectUninitialized();
-                    foreach (JProperty p in ((JObject)property.Value).Properties())
-                    {
-                        field.FieldType.GetField(p.Name)?.SetValue(v, p.Value.ToObject<float>());
-                    }
-                    field.SetValue(obj, v);
-                }
-                else
-                {
-                    field.SetValue(obj, property.Value.ToObject(field.FieldType));
-                }
+                field.SetValue(obj, property.Value.ToObject(field.FieldType, serializer));
             }
             return obj;
         }

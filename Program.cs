@@ -11,15 +11,15 @@ namespace PolyConverter
     {
         public static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings {
             Formatting = Formatting.Indented,
-            PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+            PreserveReferencesHandling = PreserveReferencesHandling.None,
             ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor,
             ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-            Converters = new JsonConverter[] { new VectorJsonConverter(), new PolyJsonConverter() }
+            Converters = new JsonConverter[] { new VectorJsonConverter(), new PolyJsonConverter() },
         };
 
         static readonly string layoutExtension = ".layout";
         static readonly string jsonExtension = ".layout.json";
-        static readonly string backupExtension = "_backup.layout";
+        static readonly string backupExtension = "_original.layout";
 
         static readonly Regex layoutExtensionRegex = new Regex(layoutExtension.Replace(".", "\\.") + "$");
         static readonly Regex jsonExtensionRegex = new Regex(jsonExtension.Replace(".", "\\.") + "$");
@@ -70,12 +70,13 @@ namespace PolyConverter
         static void LayoutToJson(string oldPath, string newPath)
         {
             int _ = 0;
-            var data = new SandboxLayoutData(File.ReadAllBytes(oldPath), ref _);
+            var bytes = File.ReadAllBytes(oldPath);
+            var data = new SandboxLayoutData(bytes, ref _);
             string json = JsonConvert.SerializeObject(data, jsonSerializerSettings);
 
             // Limit the indentation depth to 4 levels for compactness
-            json = Regex.Replace(json, "(\r\n|\r|\n)( ){8,}", " ");
-            json = Regex.Replace(json, "(\r\n|\r|\n)( ){6,}(\\}|\\])", " $3");
+            json = Regex.Replace(json, "(\r\n|\r|\n)( ){6,}", " ");
+            json = Regex.Replace(json, "(\r\n|\r|\n)( ){4,}(\\}|\\])", " $3");
 
             File.WriteAllText(newPath, json);
         }
@@ -83,8 +84,10 @@ namespace PolyConverter
         static void JsonToLayout(string oldPath, string newPath)
         {
             string json = File.ReadAllText(oldPath);
-            var data = JsonConvert.DeserializeObject<SandboxLayoutData>(json, jsonSerializerSettings).SerializeBinary();
-            File.WriteAllBytes(newPath, data);
+            var data = JsonConvert.DeserializeObject<SandboxLayoutData>(json, jsonSerializerSettings);
+            data.m_Vehicles.Clear();
+            var bytes = data.SerializeBinary();
+            File.WriteAllBytes(newPath, bytes);
         }
 
         static string PathTrim(string path)
