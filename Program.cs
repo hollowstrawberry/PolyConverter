@@ -18,7 +18,7 @@ namespace PolyConverter
 
             if (File.Exists(ManualGamePath))
             {
-                path = File.ReadAllText(ManualGamePath).Trim();
+                path = File.ReadAllText(ManualGamePath).Trim() + "\\Poly Bridge 2_Data\\Managed";
                 Console.WriteLine($"[#] Grabbed Poly Bridge 2 install location from {ManualGamePath}");
             }
             else
