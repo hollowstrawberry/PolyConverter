@@ -5,38 +5,59 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
+using static PolyConverter.PolyConverter;
 
 namespace PolyConverter
 {
     public static class Program
     {
-        public static void Main()
+        public static int Main(string[] args)
         {
             Console.WriteLine("[#] Booting up PolyConverter");
-
-            string path = null;
+            
+            bool hasArgs = args != null && args.Length > 0;
+            string assemblyPath = null;
 
             if (File.Exists(ManualGamePath))
             {
-                path = File.ReadAllText(ManualGamePath).Trim() + "\\Poly Bridge 2_Data\\Managed";
+                try
+                {
+                    assemblyPath = $"{File.ReadAllLines(ManualGamePath)[0].Trim()}\\Poly Bridge 2_Data\\Managed";
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("[Fatal Error] Failed to grab Poly Bridge 2 location from {ManualGamePath}");
+                    if (!hasArgs)
+                    {
+                        Console.WriteLine("\n[#] The program will now close.");
+                        Console.ReadLine();
+                    }
+                    return ExitCodeGamePathError;
+                }
 
                 Console.WriteLine($"[#] Grabbed Poly Bridge 2 install location from {ManualGamePath}");
             }
             else
             {
                 Exception error = null;
-
-                try { path = GetPolyBridge2SteamPath(); }
+                try
+                {
+                    assemblyPath = GetPolyBridge2SteamPath();
+                }
                 catch (Exception e) { error = e; }
 
-                if (error != null || path == null)
+                if (error != null || assemblyPath == null)
                 {
                     Console.WriteLine($"[Fatal Error] Failed to locate Poly Bridge 2 installation folder on Steam.");
-                    Console.WriteLine($"You can manually set the location by creating a file called gamepath.txt" +
+                    Console.WriteLine($" You can manually set the location by creating a file called \"{ManualGamePath}\"" +
                         "and writing the location of your game folder in that file, then restarting this program.");
-                    if (error != null) Console.WriteLine($"\nError message: {error.Message}");
-                    Console.WriteLine("\nThe program will now close.");
-                    Environment.Exit(1);
+                    if (error != null) Console.WriteLine($"\n[#] Error message: {error.Message}");
+                    if (!hasArgs)
+                    {
+                        Console.WriteLine("\n[#] The program will now close.");
+                        Console.ReadLine();
+                    }
+                    return ExitCodeGamePathError;
                 }
 
                 Console.WriteLine($"[#] Automatically detected Poly Bridge 2 installation");
@@ -44,43 +65,90 @@ namespace PolyConverter
 
             try
             {
-                PolyBridge2Assembly = Assembly.LoadFrom($"{path}\\Assembly-CSharp.dll");
-                UnityAssembly = Assembly.LoadFrom($"{path}\\UnityEngine.CoreModule.dll");
+                PolyBridge2Assembly = Assembly.LoadFrom($"{assemblyPath}\\Assembly-CSharp.dll");
+                UnityAssembly = Assembly.LoadFrom($"{assemblyPath}\\UnityEngine.CoreModule.dll");
 
                 object testObject = FormatterServices.GetUninitializedObject(VehicleProxy);
                 VehicleProxy.GetField("m_Pos").SetValue(testObject, Activator.CreateInstance(Vector2));
             }
             catch (Exception e)
             {
-                Console.WriteLine($"[Fatal Error] Failed to load Poly Bridge 2 libraries at \"{path}\":\n{e}");
-                Console.WriteLine($"\nThe program will now close.");
-                Console.ReadLine();
-                Environment.Exit(1);
+                Console.WriteLine($"[Fatal Error] Failed to load Poly Bridge 2 libraries at \"{assemblyPath}\":\n {e}");
+                if (!hasArgs)
+                {
+                    Console.WriteLine("\n[#] The program will now close.");
+                    Console.ReadLine();
+                }
+                return ExitCodeGamePathError;
             }
 
             Console.WriteLine();
 
             try
             {
-                while (true)
+                if (hasArgs)
                 {
-                    Console.WriteLine("\n");
+                    string filePath = string.Join(' ', args).Trim();
 
-                    new PolyConverter().Run();
+                    if (JsonExtensionRegex.IsMatch(filePath))
+                    {
+                        string newPath = JsonExtensionRegex.Replace(filePath, LayoutExtension);
+                        string backupPath = JsonExtensionRegex.Replace(filePath, BackupExtension);
 
-                    Console.WriteLine("\n[#] Press Enter to run the program again.");
-                    Console.ReadLine();
+                        string result = new PolyConverter().JsonToLayout(filePath, newPath, backupPath);
+
+                        Console.WriteLine(result);
+                        if (result.Contains("Invalid json")) return ExitCodeJsonError;
+                        if (result.Contains("Error") && result.Contains("file")) return ExitCodeFileError;
+                        if (result.Contains("Error")) return ExitCodeConversionError;
+                        return ExitCodeSuccessful;
+                    }
+                    else if (LayoutExtensionRegex.IsMatch(filePath))
+                    {
+                        string newPath = LayoutExtensionRegex.Replace(filePath, JsonExtension);
+
+                        string result = new PolyConverter().LayoutToJson(filePath, newPath);
+
+                        Console.WriteLine(result);
+                        if (result.Contains("Error") && result.Contains("file")) return ExitCodeFileError;
+                        if (result.Contains("Error")) return ExitCodeConversionError;
+                        return ExitCodeSuccessful;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[Error] File extension must be either {LayoutExtension} or {JsonExtension}");
+                        return ExitCodeConversionError;
+                    }
                 }
+                else
+                {
+                    while (true)
+                    {
+                        Console.WriteLine("\n");
+
+                        new PolyConverter().Main();
+
+                        Console.WriteLine("\n[#] Press Enter to run the program again.");
+                        Console.ReadLine();
+                    }
+                }
+
             }
             catch (Exception e)
             {
-                Console.WriteLine($"[Fatal Error] {e}\n\nThe program will now close.");
-                Console.ReadLine();
-                Environment.Exit(1);
+                Console.WriteLine($"[Fatal Error] An unexpected problem occured:\n {e}");
+                Console.WriteLine("\n[#] The program will now close.");
+                if (!hasArgs)
+                {
+                    Console.ReadLine();
+                    return ExitCodeUnexpectedError;
+                }
             }
+
+            return ExitCodeSuccessful;
         }
 
-        public static string GetPolyBridge2SteamPath()
+        static string GetPolyBridge2SteamPath()
         {
             var paths = new List<string>(10);
             paths.Add((string)Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Valve\\Steam").GetValue("InstallPath"));
@@ -90,7 +158,6 @@ namespace PolyConverter
             {
                 paths.Add(match.Groups[1].Value.Replace("\\\\", "\\"));
             }
-
             foreach (string path in paths)
             {
                 string assembliesPath = $"{path}\\steamapps\\common\\Poly Bridge 2\\Poly Bridge 2_Data\\Managed";
@@ -100,6 +167,13 @@ namespace PolyConverter
             return null;
         }
 
+
+        const int ExitCodeSuccessful = 0;
+        const int ExitCodeJsonError = 1;
+        const int ExitCodeConversionError = 2;
+        const int ExitCodeFileError = 3;
+        const int ExitCodeGamePathError = 4;
+        const int ExitCodeUnexpectedError = 5;
 
         const string ManualGamePath = "gamepath.txt";
 

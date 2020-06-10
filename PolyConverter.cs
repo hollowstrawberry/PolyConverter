@@ -9,7 +9,16 @@ namespace PolyConverter
 {
     public class PolyConverter
     {
-        static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings {
+        public const string LayoutExtension = ".layout";
+        public const string JsonExtension = ".layout.json";
+        public const string BackupExtension = ".layout.backup";
+
+        public static readonly Regex LayoutExtensionRegex = new Regex(LayoutExtension.Replace(".", "\\.") + "$");
+        public static readonly Regex JsonExtensionRegex = new Regex(JsonExtension.Replace(".", "\\.") + "$");
+        public static readonly Regex BackupExtensionRegex = new Regex(BackupExtension.Replace(".", "\\.") + "$");
+
+        static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings
+        {
             Formatting = Formatting.Indented,
             PreserveReferencesHandling = PreserveReferencesHandling.None,
             ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor,
@@ -17,62 +26,49 @@ namespace PolyConverter
             Converters = new JsonConverter[] { new VectorJsonConverter(), new PolyJsonConverter() },
         };
 
-        const string layoutExtension = ".layout";
-        const string jsonExtension = ".layout.json";
-        const string backupExtension = ".layout.backup";
-
         static readonly List<char> logChars = new List<char> { 'F', 'E', '+', '@', '*', '.', '>' };
 
-        static readonly Regex layoutExtensionRegex = new Regex(layoutExtension.Replace(".", "\\.") + "$");
-        static readonly Regex jsonExtensionRegex = new Regex(jsonExtension.Replace(".", "\\.") + "$");
-        static readonly Regex backupExtensionRegex = new Regex(backupExtension.Replace(".", "\\.") + "$");
 
-        public void Run()
+        public void Main()
         {
             var resultLog = new List<string>();
             int fileCount = 0, backups = 0;
 
             string[] files = null;
-            try { files = Directory.GetFiles("."); }
-            catch (IOException e)
-            {
-                Console.WriteLine($"[Fatal Error] Couldn't access files: {e.Message}.\nThe program will exit.");
-                Console.ReadLine();
-                Environment.Exit(1);
-            }
+            files = Directory.GetFiles(".");
 
             Console.WriteLine("[>] Working...");
 
             foreach (string path in files)
             {
-                if (backupExtensionRegex.IsMatch(path))
+                if (BackupExtensionRegex.IsMatch(path))
                 {
                     backups++;
                     continue;
                 }
-                else if (jsonExtensionRegex.IsMatch(path))
+                else if (JsonExtensionRegex.IsMatch(path))
                 {
-                    string layoutPath = jsonExtensionRegex.Replace(path, layoutExtension);
-                    string backupPath = jsonExtensionRegex.Replace(path, backupExtension);
+                    string layoutPath = JsonExtensionRegex.Replace(path, LayoutExtension);
+                    string backupPath = JsonExtensionRegex.Replace(path, BackupExtension);
 
                     try { resultLog.Add(JsonToLayout(path, layoutPath, backupPath)); }
                     catch (Exception e)
                     {
-                        resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
+                        resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\":\n {e}///");
                         continue;
                     }
 
                     fileCount++;
                 }
-                else if (layoutExtensionRegex.IsMatch(path))
+                else if (LayoutExtensionRegex.IsMatch(path))
                 {
-                    string newPath = layoutExtensionRegex.Replace(path, jsonExtension);
+                    string newPath = LayoutExtensionRegex.Replace(path, JsonExtension);
                     if (File.Exists(newPath)) continue;
 
                     try { resultLog.Add(LayoutToJson(path, newPath)); }
                     catch (Exception e)
                     {
-                        resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
+                        resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\":\n {e}///");
                         continue;
                     }
                     fileCount++;
@@ -96,7 +92,8 @@ namespace PolyConverter
             else Console.WriteLine($"[>] Done.");
         }
 
-        string LayoutToJson(string layoutPath, string jsonPath)
+
+        public string LayoutToJson(string layoutPath, string jsonPath)
         {
             int _ = 0;
             var bytes = File.ReadAllBytes(layoutPath);
@@ -117,7 +114,7 @@ namespace PolyConverter
             return $"[+] Created \"{PathTrim(jsonPath)}\"";
         }
 
-        string JsonToLayout(string jsonPath, string layoutPath, string backupPath)
+        public string JsonToLayout(string jsonPath, string layoutPath, string? backupPath)
         {
             string json = File.ReadAllText(jsonPath);
             object data;
@@ -140,7 +137,7 @@ namespace PolyConverter
                     return $"";
                 }
 
-                if (!File.Exists(backupPath))
+                if (backupPath != null && !File.Exists(backupPath))
                 {
                     try { File.Copy(layoutPath, backupPath); }
                     catch (IOException e)
@@ -165,9 +162,9 @@ namespace PolyConverter
             else return $"[*] Converted json file into \"{PathTrim(layoutPath)}\"";
         }
 
-        string PathTrim(string path)
+        public static string PathTrim(string path)
         {
-            return path.Substring(path.LastIndexOfAny(new char[] { '/', '\\' }) + 1);
+            return path?.Substring(path.LastIndexOfAny(new char[] { '/', '\\' }) + 1);
         }
     }
 }
