@@ -19,11 +19,13 @@ namespace PolyConverter
             if (File.Exists(ManualGamePath))
             {
                 path = File.ReadAllText(ManualGamePath).Trim() + "\\Poly Bridge 2_Data\\Managed";
+
                 Console.WriteLine($"[#] Grabbed Poly Bridge 2 install location from {ManualGamePath}");
             }
             else
             {
                 Exception error = null;
+
                 try { path = GetPolyBridge2SteamPath(); }
                 catch (Exception e) { error = e; }
 
@@ -64,7 +66,7 @@ namespace PolyConverter
 
                     new PolyConverter().Run();
 
-                    Console.WriteLine("\nPress Enter to run the program again.");
+                    Console.WriteLine("\n[#] Press Enter to run the program again.");
                     Console.ReadLine();
                 }
             }
