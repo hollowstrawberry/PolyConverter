@@ -26,7 +26,7 @@ namespace PolyConverter
                 }
                 catch (Exception)
                 {
-                    Console.WriteLine("[Fatal Error] Failed to grab Poly Bridge 2 location from {ManualGamePath}");
+                    Console.WriteLine($"[Fatal Error] Failed to grab Poly Bridge 2 location from {ManualGamePath}");
                     if (!hasArgs)
                     {
                         Console.WriteLine("\n[#] The program will now close.");
@@ -84,68 +84,52 @@ namespace PolyConverter
 
             Console.WriteLine();
 
-            try
+            if (hasArgs)
             {
-                if (hasArgs)
+                string filePath = string.Join(' ', args).Trim();
+
+                if (JsonExtensionRegex.IsMatch(filePath))
                 {
-                    string filePath = string.Join(' ', args).Trim();
+                    string newPath = JsonExtensionRegex.Replace(filePath, LayoutExtension);
+                    string backupPath = JsonExtensionRegex.Replace(filePath, BackupExtension);
 
-                    if (JsonExtensionRegex.IsMatch(filePath))
-                    {
-                        string newPath = JsonExtensionRegex.Replace(filePath, LayoutExtension);
-                        string backupPath = JsonExtensionRegex.Replace(filePath, BackupExtension);
+                    string result = new PolyConverter().JsonToLayout(filePath, newPath, backupPath);
 
-                        string result = new PolyConverter().JsonToLayout(filePath, newPath, backupPath);
+                    Console.WriteLine(result);
+                    if (result.Contains("Invalid json")) return ExitCodeJsonError;
+                    if (result.Contains("Error") && result.Contains("file")) return ExitCodeFileError;
+                    if (result.Contains("Error")) return ExitCodeConversionError;
+                    return ExitCodeSuccessful;
+                }
+                else if (LayoutExtensionRegex.IsMatch(filePath))
+                {
+                    string newPath = LayoutExtensionRegex.Replace(filePath, JsonExtension);
 
-                        Console.WriteLine(result);
-                        if (result.Contains("Invalid json")) return ExitCodeJsonError;
-                        if (result.Contains("Error") && result.Contains("file")) return ExitCodeFileError;
-                        if (result.Contains("Error")) return ExitCodeConversionError;
-                        return ExitCodeSuccessful;
-                    }
-                    else if (LayoutExtensionRegex.IsMatch(filePath))
-                    {
-                        string newPath = LayoutExtensionRegex.Replace(filePath, JsonExtension);
+                    string result = new PolyConverter().LayoutToJson(filePath, newPath);
 
-                        string result = new PolyConverter().LayoutToJson(filePath, newPath);
-
-                        Console.WriteLine(result);
-                        if (result.Contains("Error") && result.Contains("file")) return ExitCodeFileError;
-                        if (result.Contains("Error")) return ExitCodeConversionError;
-                        return ExitCodeSuccessful;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[Error] File extension must be either {LayoutExtension} or {JsonExtension}");
-                        return ExitCodeConversionError;
-                    }
+                    Console.WriteLine(result);
+                    if (result.Contains("Error") && result.Contains("file")) return ExitCodeFileError;
+                    if (result.Contains("Error")) return ExitCodeConversionError;
+                    return ExitCodeSuccessful;
                 }
                 else
                 {
-                    while (true)
-                    {
-                        Console.WriteLine("\n");
-
-                        new PolyConverter().Main();
-
-                        Console.WriteLine("\n[#] Press Enter to run the program again.");
-                        Console.ReadLine();
-                    }
+                    Console.WriteLine($"[Error] File extension must be either {LayoutExtension} or {JsonExtension}");
+                    return ExitCodeFileError;
                 }
-
             }
-            catch (Exception e)
+            else
             {
-                Console.WriteLine($"[Fatal Error] An unexpected problem occured:\n {e}");
-                Console.WriteLine("\n[#] The program will now close.");
-                if (!hasArgs)
+                while (true)
                 {
+                    Console.WriteLine("\n");
+
+                    new PolyConverter().ConvertAll();
+
+                    Console.WriteLine("\n[#] Press Enter to run the program again.");
                     Console.ReadLine();
-                    return ExitCodeUnexpectedError;
                 }
             }
-
-            return ExitCodeSuccessful;
         }
 
         static string GetPolyBridge2SteamPath()

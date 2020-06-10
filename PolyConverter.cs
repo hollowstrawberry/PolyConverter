@@ -26,10 +26,10 @@ namespace PolyConverter
             Converters = new JsonConverter[] { new VectorJsonConverter(), new PolyJsonConverter() },
         };
 
-        static readonly List<char> logChars = new List<char> { 'F', 'E', '+', '@', '*', '.', '>' };
+        static readonly List<char> logChars = new List<char> { 'F', 'E', '+', '@', '*', '>' };
 
 
-        public void Main()
+        public void ConvertAll()
         {
             var resultLog = new List<string>();
             int fileCount = 0, backups = 0;
@@ -51,12 +51,7 @@ namespace PolyConverter
                     string layoutPath = JsonExtensionRegex.Replace(path, LayoutExtension);
                     string backupPath = JsonExtensionRegex.Replace(path, BackupExtension);
 
-                    try { resultLog.Add(JsonToLayout(path, layoutPath, backupPath)); }
-                    catch (Exception e)
-                    {
-                        resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\":\n {e}///");
-                        continue;
-                    }
+                    resultLog.Add(JsonToLayout(path, layoutPath, backupPath));
 
                     fileCount++;
                 }
@@ -65,19 +60,15 @@ namespace PolyConverter
                     string newPath = LayoutExtensionRegex.Replace(path, JsonExtension);
                     if (File.Exists(newPath)) continue;
 
-                    try { resultLog.Add(LayoutToJson(path, newPath)); }
-                    catch (Exception e)
-                    {
-                        resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\":\n {e}///");
-                        continue;
-                    }
+                    resultLog.Add(LayoutToJson(path, newPath));
+
                     fileCount++;
                 }
             }
 
             resultLog = resultLog
-                .Where(s => !string.IsNullOrWhiteSpace(s) && logChars.Contains(s[1]))
-                .OrderBy(s => logChars.IndexOf(s[1]))
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .OrderBy(s => logChars.Contains(s[1]) ? logChars.IndexOf(s[1]) : logChars.Last())
                 .ToList();
 
             foreach (string msg in resultLog)
@@ -94,6 +85,12 @@ namespace PolyConverter
 
 
         public string LayoutToJson(string layoutPath, string jsonPath)
+        {
+            try { return InnerLayoutToJson(layoutPath, jsonPath); }
+            catch (Exception e) { return $"[Fatal Error] Couldn't convert \"{PathTrim(layoutPath)}\":\n {e}///"; }
+        }
+
+        private string InnerLayoutToJson(string layoutPath, string jsonPath)
         {
             int _ = 0;
             var bytes = File.ReadAllBytes(layoutPath);
@@ -114,7 +111,14 @@ namespace PolyConverter
             return $"[+] Created \"{PathTrim(jsonPath)}\"";
         }
 
-        public string JsonToLayout(string jsonPath, string layoutPath, string? backupPath)
+
+        public string JsonToLayout(string jsonPath, string layoutPath, string backupPath)
+        {
+            try { return InnerJsonToLayout(jsonPath, layoutPath, backupPath); }
+            catch (Exception e) { return $"[Fatal Error] Couldn't convert \"{PathTrim(layoutPath)}\":\n {e}///"; }
+        }
+
+        private string InnerJsonToLayout(string jsonPath, string layoutPath, string? backupPath)
         {
             string json = File.ReadAllText(jsonPath);
             object data;
