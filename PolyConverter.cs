@@ -17,7 +17,7 @@ namespace PolyConverter
         public static readonly Regex JsonRegex = new Regex(JsonExtension.Replace(".", "\\.") + "$");
         public static readonly Regex BackupRegex = new Regex(BackupExtension.Replace(".", "\\.") + "$");
 
-        static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings
+        static readonly JsonSerializerSettings JsonSerializerSettings = new JsonSerializerSettings
         {
             Formatting = Formatting.Indented,
             PreserveReferencesHandling = PreserveReferencesHandling.None,
@@ -26,7 +26,7 @@ namespace PolyConverter
             Converters = new JsonConverter[] { new VectorJsonConverter(), new ProxyJsonConverter() },
         };
 
-        static readonly List<char> logChars = new List<char> { 'F', 'E', '+', '@', '*', '>' };
+        static readonly List<char> LogChars = new List<char> { 'F', 'E', '+', '@', '*', '>' };
 
 
         public void ConvertAll()
@@ -68,7 +68,7 @@ namespace PolyConverter
 
             resultLog = resultLog
                 .Where(s => !string.IsNullOrWhiteSpace(s) && s.Length >= 2)
-                .OrderBy(s => logChars.Contains(s[1]) ? logChars.IndexOf(s[1]) : logChars.Last())
+                .OrderBy(s => LogChars.Contains(s[1]) ? LogChars.IndexOf(s[1]) : LogChars.Last())
                 .ToList();
 
             foreach (string msg in resultLog)
@@ -94,9 +94,9 @@ namespace PolyConverter
         {
             int _ = 0;
             var bytes = File.ReadAllBytes(layoutPath);
-            var dataConstructor = Program.SandboxLayoutData.GetConstructor(new Type[] { typeof(byte).MakeArrayType(), typeof(int).MakeByRefType() });
+            var dataConstructor = Program.SandboxLayoutData.GetConstructor(new[] { typeof(byte).MakeArrayType(), typeof(int).MakeByRefType() });
             var data = dataConstructor.Invoke(new object[] { bytes, _ });
-            string json = JsonConvert.SerializeObject(data, jsonSerializerSettings);
+            string json = JsonConvert.SerializeObject(data, JsonSerializerSettings);
 
             // Limit the indentation depth to 4 levels for compactness
             json = Regex.Replace(json, "(\r\n|\r|\n)( ){6,}", " ");
@@ -122,7 +122,7 @@ namespace PolyConverter
         {
             string json = File.ReadAllText(jsonPath);
             object data;
-            try { data = JsonConvert.DeserializeObject(json, Program.SandboxLayoutData, jsonSerializerSettings); }
+            try { data = JsonConvert.DeserializeObject(json, Program.SandboxLayoutData, JsonSerializerSettings); }
             catch (JsonReaderException e)
             {
                 return $"[Error] Invalid json content in \"{PathTrim(jsonPath)}\": {e.Message}";
@@ -168,7 +168,7 @@ namespace PolyConverter
 
         public static string PathTrim(string path)
         {
-            return path?.Substring(path.LastIndexOfAny(new char[] { '/', '\\' }) + 1);
+            return path?.Substring(path.LastIndexOfAny(new[] { '/', '\\' }) + 1);
         }
     }
 }

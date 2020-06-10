@@ -31,7 +31,7 @@ namespace PolyConverter
                 SerializeVehicleField(bytes, vehicle, "m_TargetSpeed",            "SerializeFloat");
                 SerializeVehicleField(bytes, vehicle, "m_Mass",                   "SerializeFloat");
                 SerializeVehicleField(bytes, vehicle, "m_BrakingForceMultiplier", "SerializeFloat");
-                SerializeVehicleField(bytes, vehicle, "m_StrengthMethod",         "SerializeInt", castToInt: true);
+                SerializeVehicleField(bytes, vehicle, "m_StrengthMethod",         "SerializeInt");
                 SerializeVehicleField(bytes, vehicle, "m_Acceleration",           "SerializeFloat");
                 SerializeVehicleField(bytes, vehicle, "m_MaxSlope",               "SerializeFloat");
                 SerializeVehicleField(bytes, vehicle, "m_DesiredAcceleration",    "SerializeFloat");
@@ -96,8 +96,8 @@ namespace PolyConverter
         /// <summary> Performs binary serialization of a field of a VehicleProxy using reflection.</summary>
         private static void SerializeVehicleField(List<byte> bytes, object vehicle, string field, string method, bool castToInt = false)
         {
-            var args = new object[] { Program.VehicleProxy.GetField(field).GetValue(vehicle) };
-            if (castToInt) args[0] = (int)args[0]; // special case
+            var args = new[] { Program.VehicleProxy.GetField(field).GetValue(vehicle) };
+            if (method == "SerializeInt") args[0] = (int)args[0]; // m_StrengthMethod needs to be cast from enum to int
             bytes.AddRange((IEnumerable<byte>)Program.ByteSerializer.GetMethod(method).Invoke(null, args));
         }
 
