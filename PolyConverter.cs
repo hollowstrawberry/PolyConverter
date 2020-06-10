@@ -13,9 +13,9 @@ namespace PolyConverter
         public const string JsonExtension = ".layout.json";
         public const string BackupExtension = ".layout.backup";
 
-        public static readonly Regex LayoutExtensionRegex = new Regex(LayoutExtension.Replace(".", "\\.") + "$");
-        public static readonly Regex JsonExtensionRegex = new Regex(JsonExtension.Replace(".", "\\.") + "$");
-        public static readonly Regex BackupExtensionRegex = new Regex(BackupExtension.Replace(".", "\\.") + "$");
+        public static readonly Regex LayoutRegex = new Regex(LayoutExtension.Replace(".", "\\.") + "$");
+        public static readonly Regex JsonRegex = new Regex(JsonExtension.Replace(".", "\\.") + "$");
+        public static readonly Regex BackupRegex = new Regex(BackupExtension.Replace(".", "\\.") + "$");
 
         static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings
         {
@@ -23,7 +23,7 @@ namespace PolyConverter
             PreserveReferencesHandling = PreserveReferencesHandling.None,
             ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor,
             ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-            Converters = new JsonConverter[] { new VectorJsonConverter(), new PolyJsonConverter() },
+            Converters = new JsonConverter[] { new VectorJsonConverter(), new ProxyJsonConverter() },
         };
 
         static readonly List<char> logChars = new List<char> { 'F', 'E', '+', '@', '*', '>' };
@@ -41,23 +41,23 @@ namespace PolyConverter
 
             foreach (string path in files)
             {
-                if (BackupExtensionRegex.IsMatch(path))
+                if (BackupRegex.IsMatch(path))
                 {
                     backups++;
                     continue;
                 }
-                else if (JsonExtensionRegex.IsMatch(path))
+                else if (JsonRegex.IsMatch(path))
                 {
-                    string layoutPath = JsonExtensionRegex.Replace(path, LayoutExtension);
-                    string backupPath = JsonExtensionRegex.Replace(path, BackupExtension);
+                    string layoutPath = JsonRegex.Replace(path, LayoutExtension);
+                    string backupPath = JsonRegex.Replace(path, BackupExtension);
 
                     resultLog.Add(JsonToLayout(path, layoutPath, backupPath));
 
                     fileCount++;
                 }
-                else if (LayoutExtensionRegex.IsMatch(path))
+                else if (LayoutRegex.IsMatch(path))
                 {
-                    string newPath = LayoutExtensionRegex.Replace(path, JsonExtension);
+                    string newPath = LayoutRegex.Replace(path, JsonExtension);
                     if (File.Exists(newPath)) continue;
 
                     resultLog.Add(LayoutToJson(path, newPath));
@@ -67,7 +67,7 @@ namespace PolyConverter
             }
 
             resultLog = resultLog
-                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Where(s => !string.IsNullOrWhiteSpace(s) && s.Length >= 2)
                 .OrderBy(s => logChars.Contains(s[1]) ? logChars.IndexOf(s[1]) : logChars.Last())
                 .ToList();
 

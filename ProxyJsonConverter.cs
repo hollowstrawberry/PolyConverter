@@ -6,19 +6,16 @@ using Newtonsoft.Json.Linq;
 
 namespace PolyConverter
 {
-    // Handles Poly Bridge 2 objects that don't have a default constructor
-
-    public class PolyJsonConverter : JsonConverter
+    /// <summary> Handles SandboxLayoutData fields whose type don't have a default constructor.</summary>
+    public class ProxyJsonConverter : JsonConverter
     {
         public override bool CanRead => true;
         public override bool CanWrite => false;
 
-        public override bool CanConvert(Type objectType)
-        {
-            if (!objectType.Name.EndsWith("Proxy")) return false;
-            var constructors = objectType.GetConstructors();
-            return constructors.Length == 2 && constructors.All(c => c.GetParameters().Length > 0);
-        }
+        public override bool CanConvert(Type type) => 
+            type.Assembly == Program.PolyBridge2Assembly
+            && type.Name.EndsWith("Proxy")
+            && type.GetConstructors().All(c => c.GetParameters().Length > 0);
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {

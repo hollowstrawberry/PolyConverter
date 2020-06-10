@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
-using static PolyConverter.PolyConverter;
 
 namespace PolyConverter
 {
@@ -88,10 +87,10 @@ namespace PolyConverter
             {
                 string filePath = string.Join(' ', args).Trim();
 
-                if (JsonExtensionRegex.IsMatch(filePath))
+                if (PolyConverter.JsonRegex.IsMatch(filePath))
                 {
-                    string newPath = JsonExtensionRegex.Replace(filePath, LayoutExtension);
-                    string backupPath = JsonExtensionRegex.Replace(filePath, BackupExtension);
+                    string newPath = PolyConverter.JsonRegex.Replace(filePath, PolyConverter.LayoutExtension);
+                    string backupPath = PolyConverter.JsonRegex.Replace(filePath, PolyConverter.BackupExtension);
 
                     string result = new PolyConverter().JsonToLayout(filePath, newPath, backupPath);
 
@@ -101,9 +100,9 @@ namespace PolyConverter
                     if (result.Contains("Error")) return ExitCodeConversionError;
                     return ExitCodeSuccessful;
                 }
-                else if (LayoutExtensionRegex.IsMatch(filePath))
+                else if (PolyConverter.LayoutRegex.IsMatch(filePath))
                 {
-                    string newPath = LayoutExtensionRegex.Replace(filePath, JsonExtension);
+                    string newPath = PolyConverter.LayoutRegex.Replace(filePath, PolyConverter.JsonExtension);
 
                     string result = new PolyConverter().LayoutToJson(filePath, newPath);
 
@@ -114,7 +113,7 @@ namespace PolyConverter
                 }
                 else
                 {
-                    Console.WriteLine($"[Error] File extension must be either {LayoutExtension} or {JsonExtension}");
+                    Console.WriteLine($"[Error] File extension must be either {PolyConverter.LayoutExtension} or {PolyConverter.JsonExtension}");
                     return ExitCodeFileError;
                 }
             }
@@ -157,7 +156,6 @@ namespace PolyConverter
         const int ExitCodeConversionError = 2;
         const int ExitCodeFileError = 3;
         const int ExitCodeGamePathError = 4;
-        const int ExitCodeUnexpectedError = 5;
 
         const string ManualGamePath = "gamepath.txt";
 
