@@ -7,73 +7,98 @@ namespace PolyConverter
 {
     public static class SandboxLayoutDataExtensions
     {
-        // Same as normal serialization, but fixes the vehicle checkpoint GUID serialization
-        // which made Unity throw an error
+        /// <summary> Same as normal serialization, but fixes the vehicle checkpoint GUID serialization,
+        /// which would otherwise made Unity throw an error </summary>
         public static byte[] SerializeBinaryCustom(this object data)
         {
             if (data.GetType() != Program.SandboxLayoutData) throw new ArgumentException(null, "data");
 
             var bytes = new List<byte>();
-            var args = new[] { bytes };
-            var binding = BindingFlags.NonPublic | BindingFlags.Instance;
-            var layout = Program.SandboxLayoutData;
-            var vehicle = Program.VehicleProxy;
-            var serializer = Program.ByteSerializer;
 
-            layout.GetMethod("SerializePreBridgeBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeBridgeBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeZedAxisVehiclesBinary", binding).Invoke(data, binding, null, args, null);
+            SerializeStep(bytes, data, "SerializePreBridgeBinary");
+            SerializeStep(bytes, data, "SerializeBridgeBinary");
 
-            int vehicleCount = ((IEnumerable<object>)layout.GetField("m_Vehicles").GetValue(data)).Count();
-            bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeInt").Invoke(null, new object[] { vehicleCount }));
+            SerializeStep(bytes, data, "SerializeZedAxisVehiclesBinary");
 
-            foreach (var veh in (IEnumerable<object>)layout.GetField("m_Vehicles").GetValue(data))
+            var vehicles = (IEnumerable<object>)Program.SandboxLayoutData.GetField("m_Vehicles").GetValue(data);
+            SerializeValue(bytes, vehicles.Count(), "SerializeInt");
+            foreach (var vehicle in (IEnumerable<object>)Program.SandboxLayoutData.GetField("m_Vehicles").GetValue(data))
             {
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeString").Invoke(null, new[] { vehicle.GetField("m_DisplayName").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeVector2").Invoke(null, new[] { vehicle.GetField("m_Pos").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeQuaternion").Invoke(null, new[] { vehicle.GetField("m_Rot").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeString").Invoke(null, new[] { vehicle.GetField("m_PrefabName").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeFloat").Invoke(null, new[] { vehicle.GetField("m_TargetSpeed").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeFloat").Invoke(null, new[] { vehicle.GetField("m_Mass").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeFloat").Invoke(null, new[] { vehicle.GetField("m_BrakingForceMultiplier").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeInt").Invoke(null, new object[] { (int)vehicle.GetField("m_StrengthMethod").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeFloat").Invoke(null, new[] { vehicle.GetField("m_Acceleration").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeFloat").Invoke(null, new[] { vehicle.GetField("m_MaxSlope").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeFloat").Invoke(null, new[] { vehicle.GetField("m_DesiredAcceleration").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeFloat").Invoke(null, new[] { vehicle.GetField("m_ShocksMultiplier").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeFloat").Invoke(null, new[] { vehicle.GetField("m_RotationDegrees").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeFloat").Invoke(null, new[] { vehicle.GetField("m_TimeDelaySeconds").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeBool").Invoke(null, new[] { vehicle.GetField("m_IdleOnDownhill").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeBool").Invoke(null, new[] { vehicle.GetField("m_Flipped").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeBool").Invoke(null, new[] { vehicle.GetField("m_OrderedCheckpoints").GetValue(veh) }));
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeString").Invoke(null, new[] { vehicle.GetField("m_Guid").GetValue(veh) }));
+                SerializeVehicleField(bytes, vehicle, "m_DisplayName",            "SerializeString");
+                SerializeVehicleField(bytes, vehicle, "m_Pos",                    "SerializeVector2");
+                SerializeVehicleField(bytes, vehicle, "m_Rot",                    "SerializeQuaternion");
+                SerializeVehicleField(bytes, vehicle, "m_PrefabName",             "SerializeString");
+                SerializeVehicleField(bytes, vehicle, "m_TargetSpeed",            "SerializeFloat");
+                SerializeVehicleField(bytes, vehicle, "m_Mass",                   "SerializeFloat");
+                SerializeVehicleField(bytes, vehicle, "m_BrakingForceMultiplier", "SerializeFloat");
+                SerializeVehicleField(bytes, vehicle, "m_StrengthMethod",         "SerializeInt", castToInt: true);
+                SerializeVehicleField(bytes, vehicle, "m_Acceleration",           "SerializeFloat");
+                SerializeVehicleField(bytes, vehicle, "m_MaxSlope",               "SerializeFloat");
+                SerializeVehicleField(bytes, vehicle, "m_DesiredAcceleration",    "SerializeFloat");
+                SerializeVehicleField(bytes, vehicle, "m_ShocksMultiplier",       "SerializeFloat");
+                SerializeVehicleField(bytes, vehicle, "m_RotationDegrees",        "SerializeFloat");
+                SerializeVehicleField(bytes, vehicle, "m_TimeDelaySeconds",       "SerializeFloat");
+                SerializeVehicleField(bytes, vehicle, "m_IdleOnDownhill",         "SerializeBool");
+                SerializeVehicleField(bytes, vehicle, "m_Flipped",                "SerializeBool");
+                SerializeVehicleField(bytes, vehicle, "m_OrderedCheckpoints",     "SerializeBool");
+                SerializeVehicleField(bytes, vehicle, "m_Guid",                   "SerializeString");
 
-                var checkpoints = (IEnumerable<object>)vehicle.GetField("m_CheckpointGuids").GetValue(veh);
-                bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeInt").Invoke(null, new object[] { checkpoints.Count() }));
+                var checkpoints = (IEnumerable<object>)Program.VehicleProxy.GetField("m_CheckpointGuids").GetValue(vehicle);
+                SerializeValue(bytes, checkpoints.Count(), "SerializeInt");
                 foreach (var checkpoint in checkpoints)
                 {
-                    bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeString").Invoke(null, new[] { checkpoint }));
+                    SerializeValue(bytes, checkpoint, "SerializeString");
                 }
             }
 
-            layout.GetMethod("SerializeVehicleStopTriggersBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeEventTimelinesBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeCheckpointsBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeTerrainStretchesBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializePlatformsBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeRampsBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeVehicleRestartPhasesBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeFlyingObjectsBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeRocksBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializeWaterBlocksBinary", binding).Invoke(data, binding, null, args, null);
-            bytes.AddRange((IEnumerable<byte>)Program.BudgetProxy.GetMethod("SerializeBinary").Invoke(layout.GetField("m_Budget").GetValue(data), null));
-            bytes.AddRange((IEnumerable<byte>)Program.SandboxSettingsProxy.GetMethod("SerializeBinary").Invoke(layout.GetField("m_Settings").GetValue(data), null));
-            layout.GetMethod("SerializeCustomShapesBinary", binding).Invoke(data, binding, null, args, null);
-            bytes.AddRange((IEnumerable<byte>)Program.WorkshopProxy.GetMethod("SerializeBinary").Invoke(layout.GetField("m_Workshop").GetValue(data), null));
-            layout.GetMethod("SerializeSupportPillarsBinary", binding).Invoke(data, binding, null, args, null);
-            layout.GetMethod("SerializePillarsBinary", binding).Invoke(data, binding, null, args, null);
+            SerializeStep(bytes, data, "SerializeVehicleStopTriggersBinary");
+            SerializeStep(bytes, data, "SerializeEventTimelinesBinary");
+            SerializeStep(bytes, data, "SerializeCheckpointsBinary");
+            SerializeStep(bytes, data, "SerializeTerrainStretchesBinary");
+            SerializeStep(bytes, data, "SerializePlatformsBinary");
+            SerializeStep(bytes, data, "SerializeRampsBinary");
+            SerializeStep(bytes, data, "SerializeVehicleRestartPhasesBinary");
+            SerializeStep(bytes, data, "SerializeFlyingObjectsBinary");
+            SerializeStep(bytes, data, "SerializeRocksBinary");
+            SerializeStep(bytes, data, "SerializeWaterBlocksBinary");
+            SerializeField(bytes, data, "m_Budget", Program.BudgetProxy);
+            SerializeField(bytes, data, "m_Settings", Program.SandboxSettingsProxy);
+            SerializeStep(bytes, data, "SerializeCustomShapesBinary");
+            SerializeField(bytes, data, "m_Workshop", Program.WorkshopProxy);
+            SerializeStep(bytes, data, "SerializeSupportPillarsBinary");
+            SerializeStep(bytes, data, "SerializePillarsBinary");
 
             return bytes.ToArray();
+        }
+
+
+        /// <summary> Invokes a serialization method of the SandboxLayoutData object using reflection.</summary>
+        private static void SerializeStep(List<byte> bytes, object data, string method)
+        {
+            var binding = BindingFlags.NonPublic | BindingFlags.Instance;
+            var args = new object[] { bytes };
+            Program.SandboxLayoutData.GetMethod(method, binding).Invoke(data, binding, null, args, null);
+        }
+
+        /// <summary> Serializes a field of the SandboxlayoutData object using reflection.</summary>
+        private static void SerializeField(List<byte> bytes, object data, string field, Type type)
+        {
+            var fieldValue = Program.SandboxLayoutData.GetField(field).GetValue(data);
+            bytes.AddRange((IEnumerable<byte>)type.GetMethod("SerializeBinary").Invoke(fieldValue, null));
+        }
+
+        /// <summary> Serializes a field of the VehicleProxy using reflection.</summary>
+        private static void SerializeVehicleField(List<byte> bytes, object vehicle, string field, string method, bool castToInt = false)
+        {
+            var args = new object[] { Program.VehicleProxy.GetField(field).GetValue(vehicle) };
+            if (castToInt) args[0] = (int)args[0]; // special case
+            bytes.AddRange((IEnumerable<byte>)Program.ByteSerializer.GetMethod(method).Invoke(null, args));
+        }
+
+        /// <summary> Serializes a value using reflection.</summary>
+        private static void SerializeValue(List<byte> bytes, object value, string method)
+        {
+            bytes.AddRange((IEnumerable<byte>)Program.ByteSerializer.GetMethod(method).Invoke(null, new[] { value }));
         }
     }
 }

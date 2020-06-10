@@ -58,6 +58,8 @@ namespace PolyConverter
                 Environment.Exit(1);
             }
 
+            Console.WriteLine();
+
             try
             {
                 while (true)
