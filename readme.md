@@ -9,8 +9,8 @@ that can't normally be edited, such as object depth (Z coordinate).
 
 ### How to use
 
-Place PolyConverter.exe inside any folder that has .layout files in it
-(the game stores them in `Documents\Dry Cactus\Poly Bridge 2\Sandbox`).  
+Place `PolyConverter.exe` inside any folder that has .layout files in it
+(the game stores them in `Documents\Dry Cactus\Poly Bridge 2\Sandbox`).
 When you run it, the .layout files will be converted into .json files.  
 By pressing Enter to run the program again, all the changes you made in the .json files
 will be applied to the .layout files.
