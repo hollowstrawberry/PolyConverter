@@ -29,77 +29,71 @@ namespace PolyConverter
 
         public void Run()
         {
-            while (true)
+            var resultLog = new List<string>();
+            int fileCount = 0, backups = 0;
+
+            string[] files = null;
+            try { files = Directory.GetFiles("."); }
+            catch (IOException e)
             {
-                var resultLog = new List<string>();
-                int fileCount = 0, backups = 0;
+                Console.WriteLine($"[Fatal Error] Couldn't access files: {e.Message}.\nThe program will exit.");
+                Console.ReadLine();
+                Environment.Exit(1);
+            }
 
-                string[] files = null;
-                try { files = Directory.GetFiles("."); }
-                catch (IOException e)
+            Console.WriteLine("[>] Working...");
+
+            foreach (string path in files)
+            {
+                if (backupExtensionRegex.IsMatch(path))
                 {
-                    Console.WriteLine($"[Fatal Error] Couldn't access files: {e.Message}.\nThe program will exit.");
-                    Console.ReadLine();
-                    Environment.Exit(1);
+                    backups++;
+                    continue;
                 }
-
-                Console.WriteLine("[>] Working...");
-
-                foreach (string path in files)
+                else if (jsonExtensionRegex.IsMatch(path))
                 {
-                    if (backupExtensionRegex.IsMatch(path))
+                    string layoutPath = jsonExtensionRegex.Replace(path, layoutExtension);
+                    string backupPath = jsonExtensionRegex.Replace(path, backupExtension);
+
+                    try { resultLog.Add(JsonToLayout(path, layoutPath, backupPath)); }
+                    catch (Exception e)
                     {
-                        backups++;
+                        resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
                         continue;
                     }
-                    else if (jsonExtensionRegex.IsMatch(path))
-                    {
-                        string layoutPath = jsonExtensionRegex.Replace(path, layoutExtension);
-                        string backupPath = jsonExtensionRegex.Replace(path, backupExtension);
 
-                        try { resultLog.Add(JsonToLayout(path, layoutPath, backupPath)); }
-                        catch (Exception e)
-                        {
-                            resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
-                            continue;
-                        }
-
-                        fileCount++;
-                    }
-                    else if (layoutExtensionRegex.IsMatch(path))
-                    {
-                        string newPath = layoutExtensionRegex.Replace(path, jsonExtension);
-                        if (File.Exists(newPath)) continue;
-
-                        try { resultLog.Add(LayoutToJson(path, newPath)); }
-                        catch (Exception e)
-                        {
-                            resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
-                            continue;
-                        }
-                        fileCount++;
-                    }
+                    fileCount++;
                 }
-
-                resultLog = resultLog
-                    .Where(s => !string.IsNullOrWhiteSpace(s) && logChars.Contains(s[1]))
-                    .OrderBy(s => logChars.IndexOf(s[1]))
-                    .ToList();
-
-                foreach (string msg in resultLog)
-                    Console.WriteLine(msg);
-
-                if (resultLog.Count == 0)
+                else if (layoutExtensionRegex.IsMatch(path))
                 {
-                    if (fileCount > 0) Console.WriteLine("[>] All files checked, no changes to apply.");
-                    else if (backups == 0) Console.WriteLine("[>] There are no layout files to convert in this folder.");
-                    else Console.WriteLine("[>] The only layouts detected are backups and were ignored.");
-                }
-                else Console.WriteLine($"[>] Done.");
+                    string newPath = layoutExtensionRegex.Replace(path, jsonExtension);
+                    if (File.Exists(newPath)) continue;
 
-                Console.WriteLine("\nPress Enter to run the program again, or close the window to exit.\n\n\n");
-                Console.ReadLine();
+                    try { resultLog.Add(LayoutToJson(path, newPath)); }
+                    catch (Exception e)
+                    {
+                        resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
+                        continue;
+                    }
+                    fileCount++;
+                }
             }
+
+            resultLog = resultLog
+                .Where(s => !string.IsNullOrWhiteSpace(s) && logChars.Contains(s[1]))
+                .OrderBy(s => logChars.IndexOf(s[1]))
+                .ToList();
+
+            foreach (string msg in resultLog)
+                Console.WriteLine(msg);
+
+            if (resultLog.Count == 0)
+            {
+                if (fileCount > 0) Console.WriteLine("[>] All files checked, no changes to apply.");
+                else if (backups == 0) Console.WriteLine("[>] There are no layout files to convert in this folder.");
+                else Console.WriteLine("[>] The only layouts detected are backups and were ignored.");
+            }
+            else Console.WriteLine($"[>] Done.");
         }
 
         string LayoutToJson(string layoutPath, string jsonPath)

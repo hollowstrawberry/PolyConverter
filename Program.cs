@@ -56,11 +56,17 @@ namespace PolyConverter
                 Environment.Exit(1);
             }
 
-            Console.WriteLine();
-
             try
             {
-                new PolyConverter().Run();
+                while (true)
+                {
+                    Console.WriteLine("\n");
+
+                    new PolyConverter().Run();
+
+                    Console.WriteLine("\nPress Enter to run the program again.");
+                    Console.ReadLine();
+                }
             }
             catch (Exception e)
             {
