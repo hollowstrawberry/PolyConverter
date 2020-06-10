@@ -26,6 +26,7 @@ namespace PolyConverter
 
             int vehicleCount = ((IEnumerable<object>)layout.GetField("m_Vehicles").GetValue(data)).Count();
             bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeInt").Invoke(null, new object[] { vehicleCount }));
+
             foreach (var veh in (IEnumerable<object>)layout.GetField("m_Vehicles").GetValue(data))
             {
                 bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeString").Invoke(null, new[] { vehicle.GetField("m_DisplayName").GetValue(veh) }));
@@ -52,10 +53,7 @@ namespace PolyConverter
                 foreach (var checkpoint in checkpoints)
                 {
                     bytes.AddRange((IEnumerable<byte>)serializer.GetMethod("SerializeString").Invoke(null, new[] { checkpoint }));
-
                 }
-
-                bytes.AddRange(bytes);
             }
 
             layout.GetMethod("SerializeVehicleStopTriggersBinary", binding).Invoke(data, binding, null, args, null);

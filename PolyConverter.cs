@@ -126,8 +126,7 @@ namespace PolyConverter
         string JsonToLayout(string jsonPath, string layoutPath, string backupPath)
         {
             string json = File.ReadAllText(jsonPath);
-            object data = null;
-
+            object data;
             try { data = JsonConvert.DeserializeObject(json, Program.SandboxLayoutData, jsonSerializerSettings); }
             catch (JsonReaderException e)
             {
