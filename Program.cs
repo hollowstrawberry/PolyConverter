@@ -1,179 +1,32 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
-using Newtonsoft.Json;
+using System.Reflection;
 
 namespace PolyConverter
 {
-    class Program
+    public static class Program
     {
-        public static readonly JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings {
-            Formatting = Formatting.Indented,
-            PreserveReferencesHandling = PreserveReferencesHandling.None,
-            ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor,
-            ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-            Converters = new JsonConverter[] { new VectorJsonConverter(), new PolyJsonConverter() },
-        };
-
-        const string layoutExtension = ".layout";
-        const string jsonExtension = ".layout.json";
-        const string backupExtension = ".layout.backup";
-
-        static readonly List<char> logChars = new List<char> { 'F', 'E', '+', '@', '*', '.', '>' };
-
-        static readonly Regex layoutExtensionRegex = new Regex(layoutExtension.Replace(".", "\\.") + "$");
-        static readonly Regex jsonExtensionRegex = new Regex(jsonExtension.Replace(".", "\\.") + "$");
-        static readonly Regex backupExtensionRegex = new Regex(backupExtension.Replace(".", "\\.") + "$");
-
-        static void Main()
+        public static void Main()
         {
-            while (true)
-            {
-                var resultLog = new List<string>();
-                int fileCount = 0, backups = 0;
+            Console.WriteLine("Booting up PolyConverter");
+            PolyBridge2Assembly = Assembly.LoadFrom("D:\\Games\\SteamLibrary\\steamapps\\common\\Poly Bridge 2\\Poly Bridge 2_Data\\Managed\\Assembly-CSharp.dll");
+            UnityAssembly = Assembly.LoadFrom("D:\\Games\\SteamLibrary\\steamapps\\common\\Poly Bridge 2\\Poly Bridge 2_Data\\Managed\\UnityEngine.CoreModule.dll");
 
-                string[] files = null;
-                try { files = Directory.GetFiles("."); }
-                catch (IOException e)
-                {
-                    Console.WriteLine($"[Fatal Error] Couldn't access files: {e.Message}.\nThe program will exit.");
-                    Console.ReadLine();
-                    Environment.Exit(1);
-                }
-
-                Console.WriteLine("[>] Working...");
-
-                foreach (string path in files)
-                {
-                    if (backupExtensionRegex.IsMatch(path))
-                    {
-                        backups++;
-                        continue;
-                    }
-                    else if (jsonExtensionRegex.IsMatch(path))
-                    {
-                        string layoutPath = jsonExtensionRegex.Replace(path, layoutExtension);
-                        string backupPath = jsonExtensionRegex.Replace(path, backupExtension);
-
-                        try { resultLog.Add(JsonToLayout(path, layoutPath, backupPath)); }
-                        catch (Exception e)
-                        {
-                            resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
-                            continue;
-                        }
-
-                        fileCount++;
-                    }
-                    else if (layoutExtensionRegex.IsMatch(path))
-                    {
-                        string newPath = layoutExtensionRegex.Replace(path, jsonExtension);
-                        if (File.Exists(newPath)) continue;
-
-                        try { resultLog.Add(LayoutToJson(path, newPath)); }
-                        catch (Exception e)
-                        {
-                            resultLog.Add($"[Fatal Error] Couldn't convert \"{PathTrim(path)}\". See below for details.\n///{e}\n///");
-                            continue;
-                        }
-                        fileCount++;
-                    }
-                }
-
-                resultLog = resultLog
-                    .Where(s => !string.IsNullOrWhiteSpace(s) && logChars.Contains(s[1]))
-                    .OrderBy(s => logChars.IndexOf(s[1]))
-                    .ToList();
-
-                foreach (string msg in resultLog)
-                    Console.WriteLine(msg);
-
-                if (resultLog.Count == 0)
-                {
-                    if (fileCount > 0) Console.WriteLine("[>] All files checked, no changes to apply.");
-                    else if (backups == 0) Console.WriteLine("[>] There are no layout files to convert in this folder.");
-                    else Console.WriteLine("[>] The only layouts detected are backups and were ignored.");
-                }
-                else Console.WriteLine($"[>] Done.");
-
-                Console.WriteLine("\nPress Enter to run the program again, or close the window to exit.\n\n\n");
-                Console.ReadLine();
-            }
+            new PolyConverter().Run();
         }
 
-        static string LayoutToJson(string layoutPath, string jsonPath)
-        {
-            int _ = 0;
-            var bytes = File.ReadAllBytes(layoutPath);
-            var data = new SandboxLayoutData(bytes, ref _);
-            string json = JsonConvert.SerializeObject(data, jsonSerializerSettings);
+        public static Assembly PolyBridge2Assembly { get; private set; }
+        public static Assembly UnityAssembly { get; private set; }
 
-            // Limit the indentation depth to 4 levels for compactness
-            json = Regex.Replace(json, "(\r\n|\r|\n)( ){6,}", " ");
-            json = Regex.Replace(json, "(\r\n|\r|\n)( ){4,}(\\}|\\])", " $3");
+        public static Type SandboxLayoutData => PolyBridge2Assembly.GetType("SandboxLayoutData");
+        public static Type ByteSerializer => PolyBridge2Assembly.GetType("ByteSerializer");
+        public static Type VehicleProxy => PolyBridge2Assembly.GetType("VehicleProxy");
+        public static Type BudgetProxy => PolyBridge2Assembly.GetType("BudgetProxy");
+        public static Type SandboxSettingsProxy => PolyBridge2Assembly.GetType("SandboxSettingsProxy");
+        public static Type WorkshopProxy => PolyBridge2Assembly.GetType("WorkshopProxy");
 
-            try { File.WriteAllText(jsonPath, json); }
-            catch (IOException e)
-            {
-                return $"[Error] Failed to save file \"{PathTrim(jsonPath)}\": {e.Message}";
-            }
-
-            return $"[+] Created \"{PathTrim(jsonPath)}\"";
-        }
-
-        static string JsonToLayout(string jsonPath, string layoutPath, string backupPath)
-        {
-            string json = File.ReadAllText(jsonPath);
-            SandboxLayoutData data = null;
-
-            try { data = JsonConvert.DeserializeObject<SandboxLayoutData>(json, jsonSerializerSettings); }
-            catch (JsonReaderException e)
-            {
-                return $"[Error] Invalid json content in \"{PathTrim(jsonPath)}\": {e.Message}";
-            }
-
-            var bytes = data.SerializeBinaryCustom();
-
-            bool madeBackup = false;
-            bool existsBefore = File.Exists(layoutPath);
-
-            if (existsBefore)
-            {
-                var oldBytes = File.ReadAllBytes(layoutPath);
-                if (oldBytes.SequenceEqual(bytes))
-                {
-                    return $"";
-                }
-
-                if (!File.Exists(backupPath))
-                {
-                    try { File.Copy(layoutPath, backupPath); }
-                    catch (IOException e)
-                    {
-                        return $"[Error] Failed to create backup file \"{PathTrim(backupPath)}\": {e.Message}. Conversion aborted.";
-                    }
-                    madeBackup = true;
-                }
-            }
-
-            try { File.WriteAllBytes(layoutPath, bytes); }
-            catch (IOException e)
-            {
-                return $"[Error] Failed to save file \"{PathTrim(layoutPath)}\": {e.Message}";
-            }
-
-            if (existsBefore)
-            {
-                if (madeBackup) return $"[@] Made backup \"{PathTrim(backupPath)}\"\n[*] Applied changes to \"{PathTrim(layoutPath)}\"";
-                return $"[*] Applied changes to \"{PathTrim(layoutPath)}\"";
-            }
-            else return $"[*] Converted json file into \"{PathTrim(layoutPath)}\"";
-        }
-
-        static string PathTrim(string path)
-        {
-            return path.Substring(path.LastIndexOfAny(new char[] { '/', '\\' }) + 1);
-        }
+        public static Type Vector2 => UnityAssembly.GetType("UnityEngine.Vector2");
+        public static Type Vector3 => UnityAssembly.GetType("UnityEngine.Vector3");
+        public static Type Quaternion => UnityAssembly.GetType("UnityEngine.Quaternion");
+        public static Type Color => UnityAssembly.GetType("UnityEngine.Color");
     }
 }

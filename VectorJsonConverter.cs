@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using ParadoxNotion;
-using UnityEngine;
-
 namespace PolyConverter
 {
     // Necessary to remove redundant properties in Unity vectors, which would case infinite loops
@@ -17,7 +16,7 @@ namespace PolyConverter
         public override bool CanConvert(Type objectType) => Types.Contains(objectType);
 
         public static readonly IReadOnlyList<Type> Types = new Type[] {
-            typeof(Vector2), typeof(Vector3), typeof(Quaternion), typeof(Color)
+            Program.Vector2, Program.Vector3, Program.Quaternion, Program.Color
         };
 
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
@@ -33,7 +32,7 @@ namespace PolyConverter
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
             JObject json = JObject.Load(reader);
-            object obj = objectType.CreateObjectUninitialized();
+            object obj = FormatterServices.GetUninitializedObject(objectType);
             foreach (JProperty property in json.Properties())
             {
                 objectType.GetField(property.Name)?.SetValue(obj, property.Value.ToObject<float>());

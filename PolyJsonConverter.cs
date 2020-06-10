@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Linq;
+using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using ParadoxNotion;
 
 namespace PolyConverter
 {
@@ -17,14 +17,13 @@ namespace PolyConverter
         {
             if (!objectType.Name.EndsWith("Proxy")) return false;
             var constructors = objectType.GetConstructors();
-            bool valid = constructors.Length == 2 && constructors.All(c => c.GetParameters().Length > 0);
-            return valid;
+            return constructors.Length == 2 && constructors.All(c => c.GetParameters().Length > 0);
         }
 
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
             JObject json = JObject.Load(reader);
-            object obj = objectType.CreateObjectUninitialized();
+            object obj = FormatterServices.GetUninitializedObject(objectType);
             foreach (JProperty property in json.Properties())
             {
                 var field = objectType.GetField(property.Name);
