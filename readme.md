@@ -1,10 +1,10 @@
 # PolyConverter
 
-This small program will convert Poly Bridge 2 layout files (from the sansbox/workshop)
+This small program will convert Poly Bridge 2 layout files (from the sandbox/workshop)
 into an easily-editable text format.
 
-It should be helpful when you need to merge layouts together, or edit parts of your level
-that can't normally be edited, such as object depth (Z coordinates).
+It will be helpful if you need to merge layouts together, or edit parts of your level
+that can't normally be edited, such as object depth (Z coordinate).
 
 
 ### How to use
