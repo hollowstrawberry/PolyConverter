@@ -12,6 +12,10 @@ namespace PolyConverter
     {
         public static int Main(string[] args)
         {
+            new Polygons().Stuff();
+            Console.ReadLine();
+            return 0;
+
             Console.WriteLine("[#] Booting up PolyConverter");
             
             bool hasArgs = args != null && args.Length > 0;
