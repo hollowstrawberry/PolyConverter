@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
@@ -13,7 +14,7 @@ namespace PolyConverter
         public static int Main(string[] args)
         {
             bool hasArgs = args != null && args.Length > 0;
-            string assemblyPath = null;
+            string gamePath = null;
 
             if (!hasArgs) Console.WriteLine("[#] Booting up PolyConverter");
 
@@ -21,7 +22,7 @@ namespace PolyConverter
             {
                 try
                 {
-                    assemblyPath = $"{File.ReadAllText(ManualGamePath).Trim()}\\Poly Bridge 2_Data\\Managed";
+                    gamePath = $"{File.ReadAllText(ManualGamePath).Trim()}\\Poly Bridge 2_Data\\Managed";
                 }
                 catch (Exception e) // Could happen if it can't read files, I suppose
                 {
@@ -38,19 +39,23 @@ namespace PolyConverter
             }
             else
             {
-                Exception error = null;
-                try
-                {
-                    assemblyPath = GetPolyBridge2SteamPath();
-                }
-                catch (Exception e) { error = e; }
+                var errors = new List<Exception>(2);
 
-                if (error != null || assemblyPath == null)
+                try { gamePath = GetPolyBridge2SteamPath(); }
+                catch (Exception e) { errors.Add(e); }
+
+                if (gamePath == null)
                 {
-                    Console.WriteLine($"[Fatal Error] Failed to locate Poly Bridge 2 installation folder on Steam.");
+                    try { gamePath = GetPolyBridge2EpicGamesPath(); }
+                    catch (Exception e) { errors.Add(e); }
+                }
+
+                if (gamePath == null)
+                {
+                    Console.WriteLine($"[Fatal Error] Failed to locate Poly Bridge 2 installation folder.");
                     Console.WriteLine($" You can manually set the location by creating a file here called \"{ManualGamePath}\"" +
                         "and writing the location of your game folder in that file, then restarting this program.");
-                    if (error != null) Console.WriteLine($"\n[#] Error message: {error.Message}");
+                    foreach (var e in errors) Console.WriteLine($"\n[#] Error message: {e.Message}");
                     if (!hasArgs)
                     {
                         Console.WriteLine("\n[#] The program will now close.");
@@ -64,15 +69,15 @@ namespace PolyConverter
 
             try
             {
-                PolyBridge2Assembly = Assembly.LoadFrom($"{assemblyPath}\\Assembly-CSharp.dll");
-                UnityAssembly = Assembly.LoadFrom($"{assemblyPath}\\UnityEngine.CoreModule.dll");
+                PolyBridge2Assembly = Assembly.LoadFrom($"{gamePath}\\Poly Bridge 2_Data\\Managed\\Assembly-CSharp.dll");
+                UnityAssembly = Assembly.LoadFrom($"{gamePath}\\Poly Bridge 2_Data\\Managed\\UnityEngine.CoreModule.dll");
 
                 object testObject = FormatterServices.GetUninitializedObject(VehicleProxy);
                 VehicleProxy.GetField("m_Pos").SetValue(testObject, Activator.CreateInstance(Vector2));
             }
             catch (Exception e)
             {
-                Console.WriteLine($"[Fatal Error] Failed to load Poly Bridge 2 libraries at \"{assemblyPath}\":\n {e}");
+                Console.WriteLine($"[Fatal Error] Failed to load Poly Bridge 2 libraries at \"{gamePath}\":\n {e}");
                 if (!hasArgs)
                 {
                     Console.WriteLine("\n[#] The program will now close.");
@@ -131,10 +136,13 @@ namespace PolyConverter
             }
         }
 
+
         static string GetPolyBridge2SteamPath()
         {
             var paths = new List<string>(10);
-            paths.Add((string)Registry.LocalMachine.OpenSubKey("SOFTWARE\\WOW6432Node\\Valve\\Steam").GetValue("InstallPath"));
+
+            paths.Add((string)Registry.LocalMachine?.OpenSubKey("SOFTWARE\\WOW6432Node\\Valve\\Steam")?.GetValue("InstallPath"));
+            if (paths[0] == null || !Directory.Exists(paths[0])) return null;
 
             string config = File.ReadAllText($"{paths[0]}\\config\\config.vdf");
             foreach (Match match in Regex.Matches(config, "\"BaseInstallFolder_[0-9]\"\\s+\"([^\"]+)\""))
@@ -143,10 +151,27 @@ namespace PolyConverter
             }
             foreach (string path in paths)
             {
-                string assembliesPath = $"{path}\\steamapps\\common\\Poly Bridge 2\\Poly Bridge 2_Data\\Managed";
+                string assembliesPath = $"{path}\\steamapps\\common\\Poly Bridge 2";
                 if (Directory.Exists(assembliesPath)) return assembliesPath;
             }
 
+            return null;
+        }
+
+        static string GetPolyBridge2EpicGamesPath()
+        {
+            var launcher = (string)Registry.LocalMachine?.OpenSubKey("SOFTWARE\\WOW6432Node\\Epic Games\\EpicGamesLauncher")?.GetValue("AppDataPath");
+            if (launcher == null || !Directory.Exists(launcher)) return null;
+
+            foreach (var file in Directory.GetFiles(launcher).Where(f => f.EndsWith(".item")))
+            {
+                string content = File.ReadAllText(file);
+                if (content.Contains("\"DisplayName\": \"Poly Bridge 2\""))
+                {
+                    var match = Regex.Match(content, "\"InstallLocation\": \"(.+)\"");
+                    return match.Groups[1].Value.Replace("\\\\", "\\");
+                }
+            }
             return null;
         }
 
