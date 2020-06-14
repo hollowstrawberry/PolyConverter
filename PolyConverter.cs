@@ -51,16 +51,24 @@ namespace PolyConverter
                     string layoutPath = JsonRegex.Replace(path, LayoutExtension);
                     string backupPath = JsonRegex.Replace(path, BackupExtension);
 
+                    if (File.Exists(layoutPath) && File.GetLastWriteTimeUtc(layoutPath) > File.GetLastWriteTimeUtc(path))
+                    {
+                        continue;
+                    }
+
                     resultLog.Add(JsonToLayout(path, layoutPath, backupPath));
 
                     fileCount++;
                 }
                 else if (LayoutRegex.IsMatch(path))
                 {
-                    string newPath = LayoutRegex.Replace(path, JsonExtension);
-                    if (File.Exists(newPath)) continue;
+                    string jsonPath = LayoutRegex.Replace(path, JsonExtension);
+                    if (File.Exists(jsonPath) && File.GetLastWriteTimeUtc(jsonPath) > File.GetLastWriteTimeUtc(path))
+                    {
+                        continue;
+                    }
 
-                    resultLog.Add(LayoutToJson(path, newPath));
+                    resultLog.Add(LayoutToJson(path, jsonPath));
 
                     fileCount++;
                 }
@@ -102,13 +110,20 @@ namespace PolyConverter
             json = Regex.Replace(json, "(\r\n|\r|\n)( ){6,}", " ");
             json = Regex.Replace(json, "(\r\n|\r|\n)( ){4,}(\\}|\\])", " $3");
 
+            bool existsBefore = File.Exists(jsonPath);
+            if (existsBefore)
+            {
+                var oldJson = File.ReadAllText(jsonPath);
+                if (oldJson == json) return "";
+            }
+
             try { File.WriteAllText(jsonPath, json); }
             catch (IOException e)
             {
                 return $"[Error] Failed to save file \"{PathTrim(jsonPath)}\": {e.Message}";
             }
 
-            return $"[+] Created \"{PathTrim(jsonPath)}\"";
+            return  $"[+] {(existsBefore ? "Updated" : "Created")} \"{PathTrim(jsonPath)}\"";
         }
 
 
@@ -138,7 +153,7 @@ namespace PolyConverter
                 var oldBytes = File.ReadAllBytes(layoutPath);
                 if (oldBytes.SequenceEqual(bytes))
                 {
-                    return $"";
+                    return "";
                 }
 
                 if (backupPath != null && !File.Exists(backupPath))
@@ -152,10 +167,14 @@ namespace PolyConverter
                 }
             }
 
-            try { File.WriteAllBytes(layoutPath, bytes); }
+            try
+            {
+                File.WriteAllBytes(layoutPath, bytes);
+                File.SetLastWriteTimeUtc(jsonPath, DateTime.UtcNow + TimeSpan.FromTicks(1)); // Mark as newer
+            }
             catch (IOException e)
             {
-                return $"[Error] Failed to save file \"{PathTrim(layoutPath)}\": {e.Message}";
+                return $"[Error] Failed to save file: {e.Message}";
             }
 
             if (existsBefore)

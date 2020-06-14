@@ -12,20 +12,20 @@ namespace PolyConverter
     {
         public static int Main(string[] args)
         {
-            Console.WriteLine("[#] Booting up PolyConverter");
-            
             bool hasArgs = args != null && args.Length > 0;
             string assemblyPath = null;
+
+            if (!hasArgs) Console.WriteLine("[#] Booting up PolyConverter");
 
             if (File.Exists(ManualGamePath))
             {
                 try
                 {
-                    assemblyPath = $"{File.ReadAllLines(ManualGamePath)[0].Trim()}\\Poly Bridge 2_Data\\Managed";
+                    assemblyPath = $"{File.ReadAllText(ManualGamePath).Trim()}\\Poly Bridge 2_Data\\Managed";
                 }
-                catch (Exception)
+                catch (Exception e) // Could happen if it can't read files, I suppose
                 {
-                    Console.WriteLine($"[Fatal Error] Failed to grab Poly Bridge 2 location from {ManualGamePath}");
+                    Console.WriteLine($"[Fatal Error] Failed to grab Poly Bridge 2 location from {ManualGamePath}: {e.Message}");
                     if (!hasArgs)
                     {
                         Console.WriteLine("\n[#] The program will now close.");
@@ -48,7 +48,7 @@ namespace PolyConverter
                 if (error != null || assemblyPath == null)
                 {
                     Console.WriteLine($"[Fatal Error] Failed to locate Poly Bridge 2 installation folder on Steam.");
-                    Console.WriteLine($" You can manually set the location by creating a file called \"{ManualGamePath}\"" +
+                    Console.WriteLine($" You can manually set the location by creating a file here called \"{ManualGamePath}\"" +
                         "and writing the location of your game folder in that file, then restarting this program.");
                     if (error != null) Console.WriteLine($"\n[#] Error message: {error.Message}");
                     if (!hasArgs)
@@ -59,7 +59,7 @@ namespace PolyConverter
                     return ExitCodeGamePathError;
                 }
 
-                Console.WriteLine($"[#] Automatically detected Poly Bridge 2 installation");
+                if (!hasArgs) Console.WriteLine($"[#] Automatically detected Poly Bridge 2 installation");
             }
 
             try
