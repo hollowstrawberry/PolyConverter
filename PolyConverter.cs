@@ -237,6 +237,7 @@ namespace PolyConverter
             var slotJson = JObject.FromObject(slot, serializer);
 
             var bridgeBytes = slotJson.Value<byte[]>("m_Bridge");
+            Console.WriteLine(JsonConvert.SerializeObject(bridgeBytes));
             var bridge = Program.BridgeSaveData.GetConstructor(new Type[] { }).Invoke(new object[] { });
             var bridgeDeserialize = Program.BridgeSaveData.GetMethod("DeserializeBinary");
             bridgeDeserialize.Invoke(bridge, new object[] { bridgeBytes, 0 });
@@ -280,6 +281,7 @@ namespace PolyConverter
                 var bridgeJson = slotJson["m_Bridge"].ToString();
                 var bridge = JsonConvert.DeserializeObject(bridgeJson, Program.BridgeSaveData, JsonSerializerSettings);
                 var bridgeBytes = Program.BridgeSaveData.GetMethod("SerializeBinary").Invoke(bridge, new object[] { });
+                Console.WriteLine(JsonConvert.SerializeObject(bridgeBytes));
                 slotJson["m_Bridge"] = JToken.FromObject(bridgeBytes);
                 slot = JsonConvert.DeserializeObject(slotJson.ToString(), Program.BridgeSaveSlotData, JsonSerializerSettings);
             }
@@ -293,6 +295,8 @@ namespace PolyConverter
                 .FirstOrDefault(x => x.Name == "SerializeValue" && x.GetParameters().Length == 3 && x.GetParameters()[1].ParameterType == Program.DataFormat);
             slotSerializer = slotSerializer.MakeGenericMethod(Program.BridgeSaveSlotData);
             var bytes = (byte[])slotSerializer.Invoke(null, BindingFlags.Static, null, new object[] { slot, format, null }, null);
+
+            // TODO: Change the few bytes that are wrong
 
             bool madeBackup = false;
             bool existsBefore = File.Exists(slotPath);
