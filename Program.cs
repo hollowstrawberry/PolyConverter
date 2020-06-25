@@ -71,9 +71,13 @@ namespace PolyConverter
             {
                 PolyBridge2Assembly = Assembly.LoadFrom($"{gamePath}\\Poly Bridge 2_Data\\Managed\\Assembly-CSharp.dll");
                 UnityAssembly = Assembly.LoadFrom($"{gamePath}\\Poly Bridge 2_Data\\Managed\\UnityEngine.CoreModule.dll");
+                SirenixAssembly = Assembly.LoadFrom($"{gamePath}\\Poly Bridge 2_Data\\Managed\\Sirenix.Serialization.dll");
+                SirenixConfigAssembly = Assembly.LoadFrom($"{gamePath}\\Poly Bridge 2_Data\\Managed\\Sirenix.Serialization.Config.dll");
 
                 object testObject = FormatterServices.GetUninitializedObject(VehicleProxy);
                 VehicleProxy.GetField("m_Pos").SetValue(testObject, Activator.CreateInstance(Vector2));
+                testObject = FormatterServices.GetUninitializedObject(DeserializationContext);
+                testObject = FormatterServices.GetUninitializedObject(DataFormat);
             }
             catch (Exception e)
             {
@@ -92,10 +96,10 @@ namespace PolyConverter
             {
                 string filePath = string.Join(' ', args).Trim();
 
-                if (PolyConverter.JsonRegex.IsMatch(filePath))
+                if (PolyConverter.LayoutJsonRegex.IsMatch(filePath))
                 {
-                    string newPath = PolyConverter.JsonRegex.Replace(filePath, PolyConverter.LayoutExtension);
-                    string backupPath = PolyConverter.JsonRegex.Replace(filePath, PolyConverter.BackupExtension);
+                    string newPath = PolyConverter.LayoutJsonRegex.Replace(filePath, PolyConverter.LayoutExtension);
+                    string backupPath = PolyConverter.LayoutJsonRegex.Replace(filePath, PolyConverter.LayoutBackupExtension);
 
                     string result = new PolyConverter().JsonToLayout(filePath, newPath, backupPath);
 
@@ -107,7 +111,7 @@ namespace PolyConverter
                 }
                 else if (PolyConverter.LayoutRegex.IsMatch(filePath))
                 {
-                    string newPath = PolyConverter.LayoutRegex.Replace(filePath, PolyConverter.JsonExtension);
+                    string newPath = PolyConverter.LayoutRegex.Replace(filePath, PolyConverter.LayoutJsonExtension);
 
                     string result = new PolyConverter().LayoutToJson(filePath, newPath);
 
@@ -118,7 +122,7 @@ namespace PolyConverter
                 }
                 else
                 {
-                    Console.WriteLine($"[Error] File extension must be either {PolyConverter.LayoutExtension} or {PolyConverter.JsonExtension}");
+                    Console.WriteLine($"[Error] File extension must be either {PolyConverter.LayoutExtension} or {PolyConverter.LayoutJsonExtension}");
                     return ExitCodeFileError;
                 }
             }
@@ -186,8 +190,12 @@ namespace PolyConverter
 
         public static Assembly PolyBridge2Assembly { get; private set; }
         public static Assembly UnityAssembly { get; private set; }
+        public static Assembly SirenixAssembly { get; private set; }
+        public static Assembly SirenixConfigAssembly { get; private set; }
 
         public static Type SandboxLayoutData => PolyBridge2Assembly.GetType("SandboxLayoutData");
+        public static Type BridgeSaveData => PolyBridge2Assembly.GetType("BridgeSaveData");
+        public static Type BridgeSaveSlotData => PolyBridge2Assembly.GetType("BridgeSaveSlotData");
         public static Type ByteSerializer => PolyBridge2Assembly.GetType("ByteSerializer");
         public static Type VehicleProxy => PolyBridge2Assembly.GetType("VehicleProxy");
         public static Type BudgetProxy => PolyBridge2Assembly.GetType("BudgetProxy");
@@ -198,5 +206,10 @@ namespace PolyConverter
         public static Type Vector3 => UnityAssembly.GetType("UnityEngine.Vector3");
         public static Type Quaternion => UnityAssembly.GetType("UnityEngine.Quaternion");
         public static Type Color => UnityAssembly.GetType("UnityEngine.Color");
+
+        public static Type SerializationUtility => SirenixAssembly.GetType("Sirenix.Serialization.SerializationUtility");
+        public static Type DeserializationContext => SirenixAssembly.GetType("Sirenix.Serialization.DeserializationContext");
+        public static Type DataFormat => SirenixConfigAssembly.GetType("Sirenix.Serialization.DataFormat");
+
     }
 }
