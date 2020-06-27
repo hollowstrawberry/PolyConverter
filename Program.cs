@@ -52,8 +52,8 @@ namespace PolyConverter
 
                 if (gamePath == null)
                 {
-                    Console.WriteLine($"[Fatal Error] Failed to locate Poly Bridge 2 installation folder.");
-                    Console.WriteLine($" You can manually set the location by creating a file here called \"{ManualGamePath}\"" +
+                    Console.WriteLine($"[Error] Failed to locate Poly Bridge 2 installation folder.");
+                    Console.WriteLine($" You can manually set the location by creating a file here called \"{ManualGamePath}\" " +
                         "and writing the location of your game folder in that file, then restarting this program.");
                     foreach (var e in errors) Console.WriteLine($"\n[#] Error message: {e.Message}");
                     if (!hasArgs)
@@ -120,9 +120,35 @@ namespace PolyConverter
                     if (result.Contains("Error")) return ExitCodeConversionError;
                     return ExitCodeSuccessful;
                 }
+                else if (PolyConverter.SlotJsonRegex.IsMatch(filePath))
+                {
+                    string newPath = PolyConverter.SlotJsonRegex.Replace(filePath, PolyConverter.SlotExtension);
+                    string backupPath = PolyConverter.SlotJsonRegex.Replace(filePath, PolyConverter.SlotBackupExtension);
+
+                    string result = new PolyConverter().JsonToSlot(filePath, newPath, backupPath);
+
+                    Console.WriteLine(result);
+                    if (result.Contains("Invalid json")) return ExitCodeJsonError;
+                    if (result.Contains("Error") && result.Contains("file")) return ExitCodeFileError;
+                    if (result.Contains("Error")) return ExitCodeConversionError;
+                    return ExitCodeSuccessful;
+                }
+                else if (PolyConverter.SlotRegex.IsMatch(filePath))
+                {
+                    string newPath = PolyConverter.SlotRegex.Replace(filePath, PolyConverter.SlotJsonExtension);
+
+                    string result = new PolyConverter().SlotToJson(filePath, newPath);
+
+                    Console.WriteLine(result);
+                    if (result.Contains("Error") && result.Contains("file")) return ExitCodeFileError;
+                    if (result.Contains("Error")) return ExitCodeConversionError;
+                    return ExitCodeSuccessful;
+                }
                 else
                 {
-                    Console.WriteLine($"[Error] File extension must be either {PolyConverter.LayoutExtension} or {PolyConverter.LayoutJsonExtension}");
+                    Console.WriteLine($"[Error] The only supported file extensions are: " +
+                        $"{PolyConverter.LayoutExtension}, {PolyConverter.LayoutJsonExtension}, " +
+                        $"{PolyConverter.SlotExtension}, {PolyConverter.SlotJsonExtension}");
                     return ExitCodeFileError;
                 }
             }
