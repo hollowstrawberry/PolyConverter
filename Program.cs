@@ -22,7 +22,7 @@ namespace PolyConverter
             {
                 try
                 {
-                    gamePath = $"{File.ReadAllText(ManualGamePath).Trim()}\\Poly Bridge 2_Data\\Managed";
+                    gamePath = $"{File.ReadAllText(ManualGamePath).Trim()}";
                 }
                 catch (Exception e) // Could happen if it can't read files, I suppose
                 {
